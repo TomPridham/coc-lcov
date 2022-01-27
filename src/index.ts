@@ -14,7 +14,7 @@ function updateSign(doc: Document, sign: string, signGroup: string, priority: nu
   const filepath = Uri.parse(doc.uri).fsPath;
   const workspaceDir = workspace.getWorkspaceFolder(doc.uri);
   const relativeFilepath = workspaceDir ? path.relative(workspaceDir.uri, doc.uri) : '';
-  const stats = CACHED_REPORT[filepath] || CACHED_REPORT[relativeFilepath];
+  const stats = CACHED_REPORT[relativeFilepath] || CACHED_REPORT[filepath];
 
   if (stats) {
     let uncoveredLines = stats.lines.details.filter(({ hit }) => !hit);
@@ -43,11 +43,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
 
   const debounceReadFile = debounce((path: string) => {
     const lcov = fs.readFileSync(path).toString();
-    let json = parseLCOV(lcov).reduce((acc, rec) => {
-      acc[rec.file] = rec;
-      return acc;
-    }, {});
-    CACHED_REPORT.json = json;
+    parseLCOV(lcov).forEach((rec) => {
+      CACHED_REPORT[rec.file] = rec;
+    });
 
     workspace.document.then((doc) => {
       updateSign(doc, 'CocLcovUncovered', SIGN_GROUP, signPriority);
